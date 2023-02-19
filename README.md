@@ -1,11 +1,10 @@
-# Very short description of the package
+# Laravel Model Translate
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/onurkacmaz/laravel-model-translate.svg?style=flat-square)](https://packagist.org/packages/onurkacmaz/laravel-model-translate)
 [![Total Downloads](https://img.shields.io/packagist/dt/onurkacmaz/laravel-model-translate.svg?style=flat-square)](https://packagist.org/packages/onurkacmaz/laravel-model-translate)
-![GitHub Actions](https://github.com/onurkacmaz/laravel-model-translate/actions/workflows/main.yml/badge.svg)
 
-This is where your description should go. Try and limit it to a paragraph or two, and maybe throw in a mention of what PSRs you support to avoid any confusion with users and contributors.
-
+This package allows model translation. It is like Symfony's gedmo translation package. It is very easy to use. You can use it in your models or controllers.
+Basically, it is a trait that you can use in your models. It will automatically create translation records of the fields you specify in the model. It will show the translation according to the registered locale. When creating or updating it will use the registered locale and will process that record. The main table pairs with "foreign_id" and "model namespace" to the translations table.
 ## Installation
 
 You can install the package via composer:
@@ -14,10 +13,71 @@ You can install the package via composer:
 composer require onurkacmaz/laravel-model-translate
 ```
 
+```bash
+php artisan vendor:publish --provider="Onurkacmaz\LaravelModelTranslate\LaravelModelTranslateServiceProvider" --tag=config
+php artisan vendor:publish --provider="Onurkacmaz\LaravelModelTranslate\LaravelModelTranslateServiceProvider" --tag=migrations
+```
+
+```bash
+php artisan migrate
+```
+
 ## Usage
 
+### Trait
+
 ```php
-// Usage description here
+use Onurkacmaz\LaravelModelTranslate\Traits\Translatable;
+
+class Blog extends Model
+{
+    use Translatable;
+
+    // You can define which fields will be translated
+    public function getTranslatable(): array
+    {
+        return ['title', 'content'];
+    }
+}
+```
+
+### Class Based Usage
+
+```php
+use Onurkacmaz\LaravelModelTranslate\Traits\Translatable;
+
+class TestController extends Controller
+{
+    public function index() {
+        $translate = new LaravelModelTranslate();
+        $translate->setColumns(['title', 'content']);
+        $translate->setModel($blog);
+        $translate->setLocale('en');
+        $translate->translate();
+        
+        // or
+        
+        $translate = new LaravelModelTranslate($blog, ['title', 'content'], 'en');
+        $translate->translate();
+    }
+}
+```
+
+### Static Usage
+
+```php
+use Onurkacmaz\LaravelModelTranslate\Traits\Translatable;
+
+class TestController extends Controller
+{
+    public function index() {
+        $translate = LaravelModelTranslate::make()
+            ->setModel($account)
+            ->setLocale('en')
+            ->setColumns(['title', 'content'])
+            ->translate();
+    }
+}
 ```
 
 ### Testing
@@ -25,10 +85,6 @@ composer require onurkacmaz/laravel-model-translate
 ```bash
 composer test
 ```
-
-### Changelog
-
-Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
 
 ## Contributing
 

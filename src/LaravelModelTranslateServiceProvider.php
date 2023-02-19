@@ -14,33 +14,18 @@ class LaravelModelTranslateServiceProvider extends ServiceProvider
         /*
          * Optional methods to load your package assets
          */
-        // $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'laravel-model-translate');
-        // $this->loadViewsFrom(__DIR__.'/../resources/views', 'laravel-model-translate');
-        // $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        // $this->loadRoutesFrom(__DIR__.'/routes.php');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         if ($this->app->runningInConsole()) {
             $this->publishes([
                 __DIR__.'/../config/config.php' => config_path('laravel-model-translate.php'),
             ], 'config');
 
-            // Publishing the views.
-            /*$this->publishes([
-                __DIR__.'/../resources/views' => resource_path('views/vendor/laravel-model-translate'),
-            ], 'views');*/
-
-            // Publishing assets.
-            /*$this->publishes([
-                __DIR__.'/../resources/assets' => public_path('vendor/laravel-model-translate'),
-            ], 'assets');*/
-
-            // Publishing the translation files.
-            /*$this->publishes([
-                __DIR__.'/../resources/lang' => resource_path('lang/vendor/laravel-model-translate'),
-            ], 'lang');*/
-
-            // Registering package commands.
-            // $this->commands([]);
+            if (!class_exists('CreateTranslationsTable')) {
+                $this->publishes([
+                    __DIR__.'/database/migrations/create_translations_table.php.stub' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_translations_table.php'),
+                ], 'migrations');
+            }
         }
     }
 

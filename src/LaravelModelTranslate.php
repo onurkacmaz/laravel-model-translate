@@ -94,20 +94,26 @@ class LaravelModelTranslate
 
         $locales = array_filter(config('laravel-model-translate.translatable.supported_locales'), fn($locale) => $locale !== $this->getLocale());
 
-        $data = [];
-        foreach ($translatableColumns as $column) {
-            foreach ($locales as $locale) {
-                $data[] = [
-                    'key' => $column,
-                    'value' => $this->getModel()->getAttribute($column),
-                    'namespace' => $this->getModel()::class,
-                    'locale' => $locale,
-                    'foreign_id' => $this->getModel()->getKey(),
-                ];
-            }
-        }
+        $translation = Translation::query()
+            ->where('namespace', $this->getModel()::class)
+            ->where('locale', '!=', $this->getLocale())
+            ->where('foreign_id', $this->getModel()->getKey())->get();
 
-        Translation::query()->insert($data);
+        if ($translation->count() <= 0) {
+            $data = [];
+            foreach ($translatableColumns as $column) {
+                foreach ($locales as $locale) {
+                    $data[] = [
+                        'key' => $column,
+                        'value' => $this->getModel()->getAttribute($column),
+                        'namespace' => $this->getModel()::class,
+                        'locale' => $locale,
+                        'foreign_id' => $this->getModel()->getKey(),
+                    ];
+                }
+            }
+            Translation::query()->insert($data);
+        }
     }
 
     public function update(): void {
@@ -125,6 +131,9 @@ class LaravelModelTranslate
                     $item->save();
                 }
             });
+            $this->getModel()->setAttribute('isOriginal', false);
+        }else {
+            $this->getModel()->setAttribute('isOriginal', true);
         }
     }
 }

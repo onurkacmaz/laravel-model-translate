@@ -19,14 +19,18 @@ trait Translatable
         self::saving(function (Model $model) {
             if ($model->exists) {
                 $model->updateTranslation($model);
-                return false;
             }
 
-            return true;
+            $isOriginal = $model->getAttribute('isOriginal');
+            $model->offsetUnset('isOriginal');
+
+            return $isOriginal;
         });
 
         self::saved(function (Model $model) {
             $model->createTranslation($model);
+
+            return false;
         });
 
         self::retrieved(function (Model $model) {
@@ -36,10 +40,10 @@ trait Translatable
 
     private function translate(Model $model): void
     {
-       LaravelModelTranslate::make()
-           ->setColumns($this->getTranslatable())
-           ->setModel($model)
-           ->translate();
+        LaravelModelTranslate::make()
+            ->setColumns($this->getTranslatable())
+            ->setModel($model)
+            ->translate();
     }
 
     private function createTranslation(Model $model): void

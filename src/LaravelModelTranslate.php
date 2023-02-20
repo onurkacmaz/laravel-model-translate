@@ -109,6 +109,7 @@ class LaravelModelTranslate
                         'namespace' => $this->getModel()::class,
                         'locale' => $locale,
                         'foreign_id' => $this->getModel()->getKey(),
+                        'created_at' => now(),
                     ];
                 }
             }

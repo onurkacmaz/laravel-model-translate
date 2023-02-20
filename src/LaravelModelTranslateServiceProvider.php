@@ -23,7 +23,7 @@ class LaravelModelTranslateServiceProvider extends ServiceProvider
 
             if (!class_exists('CreateTranslationsTable')) {
                 $this->publishes([
-                    __DIR__.'/database/migrations/create_translations_table.php.stub' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_translations_table.php'),
+                    __DIR__.'/../database/migrations/create_translations_table.php.stub' => database_path('migrations/' . date('Y_m_d_His', time()) . '_create_translations_table.php'),
                 ], 'migrations');
             }
         }

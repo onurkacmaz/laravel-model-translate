@@ -16,7 +16,7 @@ class CreateTranslationsTable extends Migration
         Schema::create('translations', function (Blueprint $table) {
             $table->id();
             $table->string('key');
-            $table->longText('value');
+            $table->longText('value')->nullable();
             $table->string('locale');
             $table->string('namespace');
             $table->bigInteger('foreign_id')->unsigned();

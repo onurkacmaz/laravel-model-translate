@@ -21,7 +21,8 @@
     ],
     "require": {
         "php": "^8.0",
-        "ext-intl": "*"
+        "ext-intl": "*",
+        "ext-redis": "*"
     },
     "require-dev": {
         "orchestra/testbench": "^6.0",

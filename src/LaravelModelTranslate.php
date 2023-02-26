@@ -5,7 +5,7 @@ namespace Onurkacmaz\LaravelModelTranslate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Schema;
-use Onurkacmaz\LaravelModelTranslate\Models\Translation;
+use Onurkacmaz\LaravelModelTranslate\Drivers\AbstractDriver;
 
 class LaravelModelTranslate
 {
@@ -15,11 +15,16 @@ class LaravelModelTranslate
 
     private string|null $locale;
 
+    private AbstractDriver $driver;
+
     public function __construct(Model|null $model = null, array $columns = [], string|null $locale = null)
     {
         $this->setColumns($columns);
         $this->setModel($model);
         $this->setLocale($locale ?? App::getLocale());
+        /** @var AbstractDriver $class */
+        $class = config(sprintf("laravel-model-translate.drivers.%s.driver", config('laravel-model-translate.driver')));
+        $this->driver = new $class;
     }
 
     public function getColumns(): array
@@ -70,16 +75,17 @@ class LaravelModelTranslate
         });
     }
 
+    public function getDriver(): AbstractDriver
+    {
+        return $this->driver;
+    }
+
     public function translate(): Model
     {
-        $translatableColumns = $this->getTranslatableColumns();
-
-        $translations = Translation::query()
-            ->select('key', 'value')
-            ->whereIn('key', $translatableColumns)
-            ->where('namespace', $this->getModel()::class)
-            ->where('locale', $this->getLocale())
-            ->where('foreign_id', $this->getModel()->getKey())
+        $translations = $this->getDriver()
+            ->setColumns($this->getTranslatableColumns())
+            ->setModel($this->getModel())
+            ->setLocale($this->getLocale())
             ->get();
 
         foreach ($translations as $item) {
@@ -90,51 +96,18 @@ class LaravelModelTranslate
     }
 
     public function create(): void {
-        $translatableColumns = $this->getTranslatableColumns();
-
-        $locales = array_filter(config('laravel-model-translate.translatable.supported_locales'), fn($locale) => $locale !== $this->getLocale());
-
-        $translation = Translation::query()
-            ->where('namespace', $this->getModel()::class)
-            ->where('locale', '!=', $this->getLocale())
-            ->where('foreign_id', $this->getModel()->getKey())->get();
-
-        if ($translation->count() <= 0) {
-            $data = [];
-            foreach ($translatableColumns as $column) {
-                foreach ($locales as $locale) {
-                    $data[] = [
-                        'key' => $column,
-                        'value' => $this->getModel()->getAttribute($column),
-                        'namespace' => $this->getModel()::class,
-                        'locale' => $locale,
-                        'foreign_id' => $this->getModel()->getKey(),
-                        'created_at' => now(),
-                    ];
-                }
-            }
-            Translation::query()->insert($data);
-        }
+        $this->getDriver()
+            ->setColumns($this->getTranslatableColumns())
+            ->setLocale($this->getLocale())
+            ->setModel($this->getModel())
+            ->create();
     }
 
     public function update(): void {
-        $translatableColumns = $this->getTranslatableColumns();
-
-        $translation = Translation::query()
-            ->where('namespace', $this->getModel()::class)
-            ->where('locale', $this->getLocale())
-            ->where('foreign_id', $this->getModel()->getKey())->get();
-
-        if ($translation->count() > 0) {
-            $translation->each(function ($item) use ($translatableColumns) {
-                if (in_array($item->key, $translatableColumns)) {
-                    $item->value = $this->getModel()->getAttribute($item->key);
-                    $item->save();
-                }
-            });
-            $this->getModel()->setAttribute('isOriginal', false);
-        }else {
-            $this->getModel()->setAttribute('isOriginal', true);
-        }
+        $this->driver
+            ->setColumns($this->getTranslatableColumns())
+            ->setLocale($this->getLocale())
+            ->setModel($this->getModel())
+            ->update();
     }
 }

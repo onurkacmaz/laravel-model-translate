@@ -23,7 +23,7 @@
         "php": "^8.0",
         "ext-intl": "*",
         "ext-redis": "*",
-        "ext-mongo": "*"
+        "mongodb/mongodb": "^1.15"
     },
     "require-dev": {
         "orchestra/testbench": "^6.0",

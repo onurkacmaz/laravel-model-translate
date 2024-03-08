@@ -2,21 +2,19 @@
 
 namespace Onurkacmaz\LaravelModelTranslate\Drivers;
 
-use MongoClient;
-use MongoCollection;
-use MongoDB as MongoBase;
+use MongoDB\Client;
+use MongoDB\Collection;
 
 class MongoDb extends AbstractDriver
 {
-    protected MongoClient $mongoClient;
-    private MongoBase $mongoDb;
-    private MongoCollection $collection;
+    private \MongoDB\Database $mongoDb;
+    private Collection $collection;
 
     public function __construct()
     {
-        $this->mongoClient = new MongoClient(config('laravel-model-translate.drivers.mongodb.dsn'));
-        $this->mongoDb = $this->mongoClient->selectDB(config('laravel-model-translate.drivers.mongodb.database'));
-        $this->collection = new MongoCollection($this->mongoDb, 'translations');
+        $client = new Client(config('laravel-model-translate.drivers.mongodb.dsn'));
+        $this->mongoDb = $client->selectDatabase(config('laravel-model-translate.drivers.mongodb.database'));
+        $this->collection = new Collection($client->getManager(), $this->mongoDb->getDatabaseName(), "translations");
     }
 
     public function get(): object
@@ -31,10 +29,10 @@ class MongoDb extends AbstractDriver
 
         foreach ($this->getColumns() as $column) {
             $result = $this->collection->find($query);
-            if ($result->count() > 0) {
+            if (count($result->toArray()) > 0) {
                 $values[] = (object)[
                     "key" => $column,
-                    "value" => $result->getNext()['value']
+                    "value" => $result->current()['value']
                 ];
             }
         }
@@ -61,7 +59,7 @@ class MongoDb extends AbstractDriver
 
         $translation = $this->collection->find($query);
 
-        if ($translation->count() <= 0) {
+        if (count($translation->toArray()) <= 0) {
             $data = [];
             foreach ($this->getColumns() as $column) {
                 foreach ($locales as $locale) {
@@ -76,7 +74,7 @@ class MongoDb extends AbstractDriver
                 }
             }
 
-            $this->collection->insert($data);
+            $this->collection->insertOne($data);
         }
     }
 
@@ -87,12 +85,12 @@ class MongoDb extends AbstractDriver
             'foreignId' => $this->getModel()->getKey()
         ];
 
-        $translation = $this->collection->find($query);
+        $translations = $this->collection->find($query);
 
-        if ($translation->count() > 0) {
-            foreach ($translation->getNext() as $translation) {
+        if (count($translations->toArray()) > 0) {
+            foreach ($translations as $translation) {
                 if (in_array($translation["key"], $this->getColumns())) {
-                    $this->collection->update($query, [
+                    $this->collection->updateOne($query, [
                         'value' => $this->getModel()->getAttribute($translation["key"])
                     ]);
                 }

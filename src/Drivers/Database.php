@@ -2,24 +2,28 @@
 
 namespace Onurkacmaz\LaravelModelTranslate\Drivers;
 
+use Illuminate\Support\Collection;
 use Onurkacmaz\LaravelModelTranslate\Models\Translation;
 
 class Database extends AbstractDriver
 {
-    final public function get(): object
+    final public function get(): Collection
     {
-        return (object)Translation::query()
-            ->select('key', 'value')
+        return Translation::query()
+            ->select(['key', 'value'])
             ->whereIn('key', $this->getColumns())
             ->where('namespace', $this->getModel()::class)
             ->where('locale', $this->getLocale())
             ->where('foreign_id', $this->getModel()->getKey())
-            ->get()
-            ->toArray();
+            ->get();
     }
 
-    final public function create(): void {
-        $locales = array_filter(config('laravel-model-translate.supported_locales'), fn($locale) => $locale !== $this->getLocale());
+    final public function create(): void
+    {
+        $locales = array_filter(
+            config('laravel-model-translate.supported_locales'),
+            fn ($locale) => $locale !== $this->getLocale()
+        );
 
         $translation = Translation::query()
             ->where('namespace', $this->getModel()::class)
@@ -44,7 +48,8 @@ class Database extends AbstractDriver
         }
     }
 
-    final public function update(): void {
+    final public function update(): void
+    {
         $translation = Translation::query()
             ->where('namespace', $this->getModel()::class)
             ->where('locale', $this->getLocale())
@@ -58,7 +63,7 @@ class Database extends AbstractDriver
                 }
             });
             $this->getModel()->setAttribute('isOriginal', false);
-        }else {
+        } else {
             $this->getModel()->setAttribute('isOriginal', true);
         }
     }

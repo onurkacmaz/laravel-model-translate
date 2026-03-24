@@ -3,10 +3,11 @@
 namespace Onurkacmaz\LaravelModelTranslate\Drivers;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 interface DriverInterface
 {
-    public function setColumns(array $columns):self;
+    public function setColumns(array $columns): self;
 
     public function setLocale(string $locale): self;
 
@@ -18,7 +19,7 @@ interface DriverInterface
 
     public function getModel(): Model;
 
-    public function get(): object;
+    public function get(): Collection;
 
     public function create(): void;
 

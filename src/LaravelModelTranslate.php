@@ -11,9 +11,9 @@ class LaravelModelTranslate
 {
     private array $columns = [];
 
-    private Model|null $model;
+    private Model|null $model = null;
 
-    private string|null $locale;
+    private string|null $locale = null;
 
     private AbstractDriver $driver;
 
@@ -70,9 +70,14 @@ class LaravelModelTranslate
 
     public function getTranslatableColumns(): array
     {
-        return array_filter(Schema::getColumnListing($this->getModel()->getTable()), function ($column) {
-            return in_array($column, $this->getColumns());
-        });
+        if (!$this->getModel() || $this->getColumns() === []) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            Schema::getColumnListing($this->getModel()->getTable()),
+            fn ($column) => in_array($column, $this->getColumns(), true)
+        ));
     }
 
     public function getDriver(): AbstractDriver
@@ -95,7 +100,12 @@ class LaravelModelTranslate
         return $this->getModel();
     }
 
-    public function create(): void {
+    public function create(): void
+    {
+        if (!$this->getModel()) {
+            return;
+        }
+
         $this->getDriver()
             ->setColumns($this->getTranslatableColumns())
             ->setLocale($this->getLocale())
@@ -103,7 +113,12 @@ class LaravelModelTranslate
             ->create();
     }
 
-    public function update(): void {
+    public function update(): void
+    {
+        if (!$this->getModel()) {
+            return;
+        }
+
         $this->driver
             ->setColumns($this->getTranslatableColumns())
             ->setLocale($this->getLocale())

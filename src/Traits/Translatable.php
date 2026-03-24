@@ -12,13 +12,11 @@ trait Translatable
         return $this->translatable ?? [];
     }
 
-    public static function boot(): void
+    public static function bootTranslatable(): void
     {
-        parent::boot();
-
-        self::saving(function (Model $model) {
+        static::saving(function (Model $model) {
             if ($model->exists) {
-                $model->updateTranslation($model);
+                $model->runTranslationUpdate();
             }
 
             $isOriginal = $model->getAttribute('isOriginal');
@@ -27,38 +25,38 @@ trait Translatable
             return $isOriginal;
         });
 
-        self::saved(function (Model $model) {
-            $model->createTranslation($model);
+        static::saved(function (Model $model) {
+            $model->runTranslationCreate();
 
             return false;
         });
 
-        self::retrieved(function (Model $model) {
-            $model->translate($model);
+        static::retrieved(function (Model $model) {
+            $model->runTranslationLookup();
         });
     }
 
-    private function translate(Model $model): void
+    private function runTranslationLookup(): void
     {
         LaravelModelTranslate::make()
             ->setColumns($this->getTranslatable())
-            ->setModel($model)
+            ->setModel($this)
             ->translate();
     }
 
-    private function createTranslation(Model $model): void
+    private function runTranslationCreate(): void
     {
         LaravelModelTranslate::make()
             ->setColumns($this->getTranslatable())
-            ->setModel($model)
+            ->setModel($this)
             ->create();
     }
 
-    private function updateTranslation(Model $model): void
+    private function runTranslationUpdate(): void
     {
         LaravelModelTranslate::make()
             ->setColumns($this->getTranslatable())
-            ->setModel($model)
+            ->setModel($this)
             ->update();
     }
 }

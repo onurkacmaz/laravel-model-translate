@@ -12,13 +12,17 @@ abstract class AbstractDriver implements DriverInterface
 
     private Model $model;
 
-    public function setColumns(array $columns):self {
+    public function setColumns(array $columns): self
+    {
         $this->columns = $columns;
+
         return $this;
     }
 
-    public function setLocale(string $locale): self {
+    public function setLocale(string $locale): self
+    {
         $this->locale = $locale;
+
         return $this;
     }
 

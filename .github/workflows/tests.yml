@@ -93,3 +93,18 @@ jobs:
 
       - run: composer update --prefer-dist --no-interaction
       - run: vendor/bin/pint --test
+
+  # A single, stable check to mark as required in the branch protection rules,
+  # instead of every job of the matrix.
+  ci-passed:
+    name: CI passed
+    if: always()
+    needs: [tests, mongodb, lint]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check the result of every job
+        run: |
+          [ "${{ needs.tests.result }}" = "success" ] \
+            && [ "${{ needs.mongodb.result }}" = "success" ] \
+            && [ "${{ needs.lint.result }}" = "success" ]

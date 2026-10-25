@@ -4,27 +4,30 @@ namespace Onurkacmaz\LaravelModelTranslate;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\App;
-use Illuminate\Support\Facades\Schema;
-use Onurkacmaz\LaravelModelTranslate\Drivers\AbstractDriver;
+use LogicException;
+use Onurkacmaz\LaravelModelTranslate\Drivers\DriverInterface;
 
 class LaravelModelTranslate
 {
     private array $columns = [];
 
-    private Model|null $model;
+    private ?Model $model = null;
 
-    private string|null $locale;
+    private ?string $locale = null;
 
-    private AbstractDriver $driver;
+    private ?DriverInterface $driver;
 
-    public function __construct(Model|null $model = null, array $columns = [], string|null $locale = null)
+    public function __construct(?Model $model = null, array $columns = [], ?string $locale = null, ?DriverInterface $driver = null)
     {
         $this->setColumns($columns);
         $this->setModel($model);
-        $this->setLocale($locale ?? App::getLocale());
-        /** @var AbstractDriver $class */
-        $class = config(sprintf("laravel-model-translate.drivers.%s.driver", config('laravel-model-translate.driver')));
-        $this->driver = new $class;
+        $this->locale = $locale;
+        $this->driver = $driver;
+    }
+
+    public static function make(?Model $model = null, array $columns = [], ?string $locale = null): self
+    {
+        return new self($model, $columns, $locale);
     }
 
     public function getColumns(): array
@@ -34,80 +37,164 @@ class LaravelModelTranslate
 
     public function setColumns(array $columns): self
     {
-        $this->columns = $columns;
+        $this->columns = array_values(array_unique($columns));
 
         return $this;
     }
 
-    public function getModel(): Model|null
+    public function getModel(): ?Model
     {
         return $this->model;
     }
 
-    public function setModel(Model|null $model = null): self
+    public function setModel(?Model $model = null): self
     {
         $this->model = $model;
 
         return $this;
     }
 
-    public static function make(): self
-    {
-        return new self();
-    }
-
+    /**
+     * The locale being worked on. Defaults to the current application locale.
+     */
     public function getLocale(): string
     {
-        return $this->locale;
+        return $this->locale ?? App::getLocale();
     }
 
-    public function setLocale(string $locale): self
+    public function setLocale(?string $locale): self
     {
         $this->locale = $locale;
 
         return $this;
     }
 
+    public function getDriver(): DriverInterface
+    {
+        return $this->driver ??= App::make(DriverInterface::class);
+    }
+
+    public function setDriver(DriverInterface $driver): self
+    {
+        $this->driver = $driver;
+
+        return $this;
+    }
+
+    /**
+     * The configured columns that are present on the model.
+     */
     public function getTranslatableColumns(): array
     {
-        return array_filter(Schema::getColumnListing($this->getModel()->getTable()), function ($column) {
-            return in_array($column, $this->getColumns());
-        });
+        $attributes = $this->requireModel()->getAttributes();
+
+        return array_values(array_filter($this->getColumns(), fn (string $column) => array_key_exists($column, $attributes)));
     }
 
-    public function getDriver(): AbstractDriver
+    /**
+     * The supported locales other than the current one.
+     */
+    public function getOtherLocales(): array
     {
-        return $this->driver;
+        $locale = $this->getLocale();
+
+        return array_values(array_filter(
+            (array) config('laravel-model-translate.supported_locales', []),
+            fn (string $supported) => $supported !== $locale,
+        ));
     }
 
-    public function translate(): Model
+    /**
+     * Get the stored translations of the current locale, keyed by column.
+     */
+    public function getTranslations(): array
     {
-        $translations = $this->getDriver()
-            ->setColumns($this->getTranslatableColumns())
-            ->setModel($this->getModel())
-            ->setLocale($this->getLocale())
-            ->get();
-
-        foreach ($translations as $item) {
-            $this->getModel()->setAttribute($item->key, $item->value);
+        if (! $this->isPersisted()) {
+            return [];
         }
 
-        return $this->getModel();
+        return $this->getDriver()->get($this->model, $this->getTranslatableColumns(), $this->getLocale());
     }
 
-    public function create(): void {
-        $this->getDriver()
-            ->setColumns($this->getTranslatableColumns())
-            ->setLocale($this->getLocale())
-            ->setModel($this->getModel())
-            ->create();
+    /**
+     * Fill the model with its translations in the current locale. The filled
+     * columns are marked as clean, so saving the model will not write the
+     * translated values into the model's own table.
+     */
+    public function translate(): Model
+    {
+        $model = $this->requireModel();
+        $translations = $this->getTranslations();
+
+        if ($translations !== []) {
+            $model->setRawAttributes(array_merge($model->getAttributes(), $translations));
+            $model->syncOriginalAttributes(array_keys($translations));
+        }
+
+        return $model;
     }
 
-    public function update(): void {
-        $this->driver
-            ->setColumns($this->getTranslatableColumns())
-            ->setLocale($this->getLocale())
-            ->setModel($this->getModel())
-            ->update();
+    /**
+     * Create the initial translations for every supported locale except the
+     * current one, using the model's current values.
+     */
+    public function create(): void
+    {
+        if (! $this->isPersisted()) {
+            return;
+        }
+
+        $this->getDriver()->create($this->model, $this->values(), $this->getOtherLocales());
+    }
+
+    /**
+     * Store the given values, or the model's current values, as the
+     * translation of the current locale. Returns false when the current
+     * locale has no translation for this model, i.e. the values belong in the
+     * model's own table.
+     */
+    public function update(?array $values = null): bool
+    {
+        if (! $this->isPersisted()) {
+            return false;
+        }
+
+        $values = $values === null ? $this->values() : array_intersect_key($values, array_flip($this->getColumns()));
+
+        return $this->getDriver()->update($this->model, $values, $this->getLocale());
+    }
+
+    /**
+     * Delete the model's translations in every supported locale.
+     */
+    public function delete(): void
+    {
+        if (! $this->isPersisted()) {
+            return;
+        }
+
+        $this->getDriver()->delete($this->model, (array) config('laravel-model-translate.supported_locales', []));
+    }
+
+    /**
+     * The raw values of the translatable columns, keyed by column.
+     */
+    private function values(): array
+    {
+        return array_intersect_key($this->model->getAttributes(), array_flip($this->getTranslatableColumns()));
+    }
+
+    private function isPersisted(): bool
+    {
+        return $this->requireModel()->getKey() !== null;
+    }
+
+    private function requireModel(): Model
+    {
+        if ($this->model === null) {
+            throw new LogicException('A model must be set before translating. Call setModel() first.');
+        }
+
+        return $this->model;
     }
 }

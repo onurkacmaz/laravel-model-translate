@@ -1,0 +1,95 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }} (${{ matrix.stability }})
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3', '8.4']
+        laravel: ['10.*', '11.*', '12.*', '13.*']
+        stability: [prefer-lowest, prefer-stable]
+        exclude:
+          - php: '8.1'
+            laravel: '11.*'
+          - php: '8.1'
+            laravel: '12.*'
+          - php: '8.1'
+            laravel: '13.*'
+          - php: '8.2'
+            laravel: '13.*'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, redis
+          coverage: none
+
+      - name: Install dependencies
+        run: |
+          composer require "illuminate/support:${{ matrix.laravel }}" --no-interaction --no-update
+          composer update --${{ matrix.stability }} --prefer-dist --no-interaction
+
+      - name: Run tests
+        run: vendor/bin/phpunit
+
+  mongodb:
+    name: MongoDB driver
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: dom, curl, libxml, mbstring, zip, pdo, sqlite, pdo_sqlite, mongodb
+          coverage: none
+
+      - name: Install dependencies
+        run: |
+          composer require mongodb/mongodb --dev --no-interaction --no-update
+          composer update --prefer-dist --no-interaction
+
+      - name: Run tests
+        run: vendor/bin/phpunit --filter MongoDbDriverTest
+        env:
+          TRANSLATION_MONGO_DSN: mongodb://127.0.0.1:27017
+
+  lint:
+    name: Code style
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - run: composer update --prefer-dist --no-interaction
+      - run: vendor/bin/pint --test

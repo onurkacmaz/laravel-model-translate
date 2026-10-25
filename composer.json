@@ -1,13 +1,16 @@
 {
     "name": "onurkacmaz/laravel-model-translate",
-    "description": "This package allows model translation. It is like Symfony's gedmo translation package.",
+    "description": "Translate Eloquent model attributes into multiple locales, stored in a database table, Redis or MongoDB. Inspired by Gedmo Translatable.",
     "keywords": [
         "onurkacmaz",
-        "laravel-model-translate",
         "laravel",
+        "eloquent",
         "model",
         "translate",
-        "translation"
+        "translation",
+        "translatable",
+        "localization",
+        "i18n"
     ],
     "homepage": "https://github.com/onurkacmaz/laravel-model-translate",
     "license": "MIT",
@@ -19,16 +22,26 @@
             "role": "Developer"
         }
     ],
+    "support": {
+        "issues": "https://github.com/onurkacmaz/laravel-model-translate/issues",
+        "source": "https://github.com/onurkacmaz/laravel-model-translate"
+    },
     "require": {
-        "php": "^8.0",
-        "ext-intl": "*",
-        "ext-redis": "*",
-        "mongodb/mongodb": "^1.15"
+        "php": "^8.1",
+        "illuminate/contracts": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/database": "^10.0|^11.0|^12.0|^13.0",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^6.0",
-        "pestphp/pest": "^1.22",
-        "phpunit/phpunit": "^9.0"
+        "laravel/pint": "^1.13",
+        "orchestra/testbench": "^8.0|^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^10.5|^11.5|^12.5",
+        "predis/predis": "^2.2|^3.0"
+    },
+    "suggest": {
+        "ext-redis": "Required to use the redis driver with the phpredis client.",
+        "predis/predis": "Required to use the redis driver with the predis client.",
+        "mongodb/mongodb": "Required to use the mongodb driver (^1.15|^2.0)."
     },
     "autoload": {
         "psr-4": {
@@ -42,14 +55,12 @@
     },
     "scripts": {
         "test": "vendor/bin/phpunit",
-        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
-
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "format": "vendor/bin/pint",
+        "lint": "vendor/bin/pint --test"
     },
     "config": {
-        "sort-packages": true,
-        "allow-plugins": {
-            "pestphp/pest-plugin": true
-        }
+        "sort-packages": true
     },
     "extra": {
         "laravel": {
@@ -60,5 +71,7 @@
                 "LaravelModelTranslate": "Onurkacmaz\\LaravelModelTranslate\\LaravelModelTranslateFacade"
             }
         }
-    }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

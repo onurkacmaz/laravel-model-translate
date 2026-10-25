@@ -5,60 +5,110 @@ namespace Onurkacmaz\LaravelModelTranslate\Traits;
 use Illuminate\Database\Eloquent\Model;
 use Onurkacmaz\LaravelModelTranslate\LaravelModelTranslate;
 
+/**
+ * Translates the columns listed in a model's $translatable property (or
+ * returned by its getTranslatable() method) into the application locale.
+ *
+ * The locale active when a model is first saved is kept in the model's own
+ * table; every other supported locale is stored by the configured driver.
+ */
 trait Translatable
 {
-    public function getTranslatable(): array
+    public static function bootTranslatable(): void
     {
-        return $this->translatable ?? [];
-    }
+        static::retrieved(function (Model $model) {
+            $model->modelTranslator()->translate();
+        });
 
-    public static function boot(): void
-    {
-        parent::boot();
-
-        self::saving(function (Model $model) {
-            if ($model->exists) {
-                $model->updateTranslation($model);
+        static::saving(function (Model $model) {
+            if (! $model->exists) {
+                return;
             }
 
-            $isOriginal = $model->getAttribute('isOriginal');
-            $model->offsetUnset('isOriginal');
+            $dirty = array_keys(array_intersect_key($model->getDirty(), array_flip($model->getTranslatable())));
 
-            return $isOriginal;
+            if ($dirty === []) {
+                return;
+            }
+
+            // In a translated locale the changed values go to the translation
+            // storage and are left out of the update of the model's own table.
+            if ($model->modelTranslator()->setColumns($dirty)->update()) {
+                $model->syncOriginalAttributes($dirty);
+            }
         });
 
-        self::saved(function (Model $model) {
-            $model->createTranslation($model);
-
-            return false;
+        static::saved(function (Model $model) {
+            $model->modelTranslator()->create();
         });
 
-        self::retrieved(function (Model $model) {
-            $model->translate($model);
+        static::deleted(function (Model $model) {
+            if (method_exists($model, 'isForceDeleting') && ! $model->isForceDeleting()) {
+                return;
+            }
+
+            $model->modelTranslator()->delete();
         });
     }
 
-    private function translate(Model $model): void
+    /**
+     * The columns that are translated.
+     *
+     * @return array<int, string>
+     */
+    public function getTranslatable(): array
     {
-        LaravelModelTranslate::make()
-            ->setColumns($this->getTranslatable())
-            ->setModel($model)
-            ->translate();
+        return property_exists($this, 'translatable') ? (array) $this->translatable : [];
     }
 
-    private function createTranslation(Model $model): void
+    /**
+     * Fill the model with its translations in the given locale.
+     */
+    public function translateTo(string $locale): static
     {
-        LaravelModelTranslate::make()
-            ->setColumns($this->getTranslatable())
-            ->setModel($model)
-            ->create();
+        $columns = array_values(array_intersect($this->getTranslatable(), array_keys($this->getAttributes())));
+
+        // Start from the values in the model's own table, so that switching to
+        // the locale kept there undoes a previously applied translation.
+        if ($this->exists && $columns !== []) {
+            $stored = $this->newQueryWithoutScopes()->whereKey($this->getKey())->toBase()->first($columns);
+
+            if ($stored !== null) {
+                $this->setRawAttributes(array_merge($this->getAttributes(), (array) $stored));
+                $this->syncOriginalAttributes($columns);
+            }
+        }
+
+        $this->modelTranslator($locale)->translate();
+
+        return $this;
     }
 
-    private function updateTranslation(Model $model): void
+    /**
+     * Get the stored translations of the given locale, keyed by column.
+     *
+     * @return array<string, mixed>
+     */
+    public function getTranslations(?string $locale = null): array
     {
-        LaravelModelTranslate::make()
-            ->setColumns($this->getTranslatable())
-            ->setModel($model)
-            ->update();
+        return $this->modelTranslator($locale)->getTranslations();
+    }
+
+    /**
+     * Store the given values as the translation of a locale without touching
+     * the model's attributes. Returns false, without writing anything, when
+     * the model has no translation in that locale (it is the locale kept in
+     * the model's own table).
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public function saveTranslation(string $locale, array $values): bool
+    {
+        return $this->modelTranslator($locale)->update($values);
+    }
+
+    public function modelTranslator(?string $locale = null): LaravelModelTranslate
+    {
+        return LaravelModelTranslate::make($this, $this->getTranslatable(), $locale);
     }
 }

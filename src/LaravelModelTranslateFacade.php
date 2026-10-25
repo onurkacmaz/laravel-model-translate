@@ -5,16 +5,21 @@ namespace Onurkacmaz\LaravelModelTranslate;
 use Illuminate\Support\Facades\Facade;
 
 /**
- * @see \Onurkacmaz\LaravelModelTranslate\Skeleton\SkeletonClass
+ * @method static LaravelModelTranslate setModel(\Illuminate\Database\Eloquent\Model|null $model = null)
+ * @method static LaravelModelTranslate setColumns(array $columns)
+ * @method static LaravelModelTranslate setLocale(string|null $locale)
+ * @method static LaravelModelTranslate setDriver(\Onurkacmaz\LaravelModelTranslate\Drivers\DriverInterface $driver)
+ *
+ * @see \Onurkacmaz\LaravelModelTranslate\LaravelModelTranslate
  */
 class LaravelModelTranslateFacade extends Facade
 {
     /**
-     * Get the registered name of the component.
-     *
-     * @return string
+     * A new, stateful instance is resolved for every call.
      */
-    protected static function getFacadeAccessor()
+    protected static $cached = false;
+
+    protected static function getFacadeAccessor(): string
     {
         return 'laravel-model-translate';
     }

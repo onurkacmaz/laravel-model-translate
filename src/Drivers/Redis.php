@@ -2,78 +2,101 @@
 
 namespace Onurkacmaz\LaravelModelTranslate\Drivers;
 
-use Redis as RedisBase;
+use Illuminate\Contracts\Redis\Factory as RedisFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Redis\Connections\Connection;
 
-class Redis extends AbstractDriver
+/**
+ * Stores the translations of a model in one Redis hash per locale. Values
+ * are JSON encoded so that null and scalar types survive the round trip.
+ */
+class Redis implements DriverInterface
 {
-    private RedisBase $redis;
-
-    public function __construct()
+    public function __construct(private RedisFactory $redis, private array $config = [])
     {
-        $this->redis = new RedisBase();
-        $this->redis->connect(config('laravel-model-translate.drivers.redis.host'), config('laravel-model-translate.drivers.redis.port'));
-        $this->redis->auth([
-            'user' => config('laravel-model-translate.drivers.redis.user'),
-            'password' => config('laravel-model-translate.drivers.redis.password')
-        ]);
-        $this->redis->select(config('laravel-model-translate.drivers.redis.database'));
     }
 
-    public function get(): object
+    public function get(Model $model, array $columns, string $locale): array
     {
-        $values = [];
+        if ($columns === []) {
+            return [];
+        }
 
-        foreach ($this->getColumns() as $column) {
-            $key = sprintf('%s:%s:%s:%s', $this->getModel()::class, $this->getLocale(), $column, $this->getModel()->getKey());
-            if ($this->redis->exists($key)) {
-                $values[] = (object)[
-                    "key" => $column,
-                    "value" => $this->redis->get($key)
-                ];
+        $hash = $this->connection()->hgetall($this->key($model, $locale)) ?: [];
+
+        $translations = [];
+
+        foreach ($columns as $column) {
+            if (array_key_exists($column, $hash)) {
+                $translations[$column] = json_decode($hash[$column], true);
             }
         }
 
-        if (count($values) <= 0) {
-            return (object)[];
-        }
-
-        return (object)$values;
+        return $translations;
     }
 
-    public function create(): void {
-        $values = [];
+    public function create(Model $model, array $values, array $locales): void
+    {
+        if ($values === [] || $locales === []) {
+            return;
+        }
 
-        $locales = array_filter(config('laravel-model-translate.supported_locales'), fn($locale) => $locale !== $this->getLocale());
-
-        foreach ($this->getColumns() as $column) {
-            $key = sprintf('%s:%s:%s:%s', $this->getModel()::class, $this->getLocale(), $column, $this->getModel()->getKey());
-            if ($this->redis->exists($key)) {
-                $values[] = $this->redis->get($key);
+        foreach ($locales as $locale) {
+            if ($this->connection()->exists($this->key($model, $locale))) {
+                return;
             }
         }
 
-        if (count($values) <= 0) {
-            foreach ($this->getColumns() as $column) {
-                foreach ($locales as $locale) {
-                    $this->redis->set(sprintf('%s:%s:%s:%s', $this->getModel()::class, $locale, $column, $this->getModel()->getKey()), $this->getModel()->getAttribute($column));
-                }
-            }
+        foreach ($locales as $locale) {
+            $this->connection()->hmset($this->key($model, $locale), $this->encode($values));
         }
     }
 
-    public function update(): void {
-        $translations = (array)$this->get();
+    public function update(Model $model, array $values, string $locale): bool
+    {
+        $key = $this->key($model, $locale);
 
-        if (count($translations) > 0) {
-            foreach ($translations as $translation) {
-                if (in_array($translation->key, $this->getColumns())) {
-                    $translation->value = $this->getModel()->getAttribute($translation->key);
-                    $this->redis->set(sprintf('%s:%s:%s:%s', $this->getModel()::class, $this->getLocale(), $translation->key, $this->getModel()->getKey()), $translation->value);
-                }
-            }
-            $this->getModel()->setAttribute('isOriginal', false);
-        }else {
-            $this->getModel()->setAttribute('isOriginal', true);
+        if (! $this->connection()->exists($key)) {
+            return false;
         }
+
+        if ($values !== []) {
+            $this->connection()->hmset($key, $this->encode($values));
+        }
+
+        return true;
+    }
+
+    public function delete(Model $model, array $locales): void
+    {
+        if ($locales === []) {
+            return;
+        }
+
+        $this->connection()->del(...array_map(fn (string $locale) => $this->key($model, $locale), $locales));
+    }
+
+    protected function connection(): Connection
+    {
+        return $this->redis->connection($this->config['connection'] ?? null);
+    }
+
+    protected function key(Model $model, string $locale): string
+    {
+        return implode(':', array_filter([
+            $this->config['prefix'] ?? 'translations',
+            $model->getMorphClass(),
+            $model->getKey(),
+            $locale,
+        ], fn ($part) => $part !== null && $part !== ''));
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     * @return array<string, string>
+     */
+    protected function encode(array $values): array
+    {
+        return array_map(fn ($value) => json_encode($value), $values);
     }
 }

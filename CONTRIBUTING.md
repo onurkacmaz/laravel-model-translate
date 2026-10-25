@@ -40,9 +40,11 @@ Before submitting a pull request:
 
 If the project maintainer has any additional requirements, you will find them listed here.
 
-- **[PSR-2 Coding Standard](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-2-coding-style-guide.md)** - The easiest way to apply the conventions is to install [PHP Code Sniffer](https://pear.php.net/package/PHP_CodeSniffer).
+- **Coding style** - The code follows the Laravel style, enforced with [Laravel Pint](https://laravel.com/docs/pint). Run `composer format` before committing; `composer lint` checks it.
 
-- **Add tests!** - Your patch won't be accepted if it doesn't have tests.
+- **Add tests!** - Your patch won't be accepted if it doesn't have tests. Run them with `composer test`.
+
+- **Document any change in the changelog** - Add a line under `Unreleased` in `CHANGELOG.md`.
 
 - **Document any change in behaviour** - Make sure the `README.md` and any other relevant documentation are kept up-to-date.
 
@@ -51,5 +53,17 @@ If the project maintainer has any additional requirements, you will find them li
 - **One pull request per feature** - If you want to do more than one thing, send multiple pull requests.
 
 - **Send coherent history** - Make sure each individual commit in your pull request is meaningful. If you had to make multiple intermediate commits while developing, please [squash them](https://www.git-scm.com/book/en/v2/Git-Tools-Rewriting-History#Changing-Multiple-Commit-Messages) before submitting.
+
+## Running the tests
+
+```bash
+composer install
+composer test
+```
+
+The Redis tests need a Redis server at `127.0.0.1:6379` and are skipped without one. The MongoDB tests need the
+`mongodb` extension, `composer require --dev mongodb/mongodb` and a server at `TRANSLATION_MONGO_DSN`.
+
+Please also read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 **Happy coding**!

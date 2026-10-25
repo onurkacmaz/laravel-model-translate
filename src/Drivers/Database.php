@@ -8,9 +8,7 @@ use Onurkacmaz\LaravelModelTranslate\Models\Translation;
 
 class Database implements DriverInterface
 {
-    public function __construct(private array $config = [])
-    {
-    }
+    public function __construct(private array $config = []) {}
 
     public function get(Model $model, array $columns, string $locale): array
     {
@@ -87,7 +85,7 @@ class Database implements DriverInterface
 
     protected function newModel(): Translation
     {
-        return (new Translation())
+        return (new Translation)
             ->setConnection($this->config['connection'] ?? null)
             ->setTable($this->config['table'] ?? 'translations');
     }

@@ -30,7 +30,7 @@ class LaravelModelTranslateServiceProvider extends ServiceProvider
             return $driver;
         });
 
-        $this->app->bind('laravel-model-translate', fn () => new LaravelModelTranslate());
+        $this->app->bind('laravel-model-translate', fn () => new LaravelModelTranslate);
     }
 
     public function boot(): void

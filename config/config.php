@@ -1,5 +1,9 @@
 <?php
 
+use Onurkacmaz\LaravelModelTranslate\Drivers\Database;
+use Onurkacmaz\LaravelModelTranslate\Drivers\MongoDb;
+use Onurkacmaz\LaravelModelTranslate\Drivers\Redis;
+
 return [
 
     /*
@@ -37,21 +41,21 @@ return [
     'drivers' => [
 
         'database' => [
-            'driver' => \Onurkacmaz\LaravelModelTranslate\Drivers\Database::class,
+            'driver' => Database::class,
             // null uses the default database connection.
             'connection' => env('TRANSLATION_DB_CONNECTION'),
             'table' => env('TRANSLATION_DB_TABLE', 'translations'),
         ],
 
         'redis' => [
-            'driver' => \Onurkacmaz\LaravelModelTranslate\Drivers\Redis::class,
+            'driver' => Redis::class,
             // A connection name defined in config/database.php "redis" section.
             'connection' => env('TRANSLATION_REDIS_CONNECTION', 'default'),
             'prefix' => env('TRANSLATION_REDIS_PREFIX', 'translations'),
         ],
 
         'mongodb' => [
-            'driver' => \Onurkacmaz\LaravelModelTranslate\Drivers\MongoDb::class,
+            'driver' => MongoDb::class,
             'dsn' => env('TRANSLATION_MONGO_DSN', 'mongodb://localhost:27017'),
             'database' => env('TRANSLATION_MONGO_DB', 'translations'),
             'collection' => env('TRANSLATION_MONGO_COLLECTION', 'translations'),

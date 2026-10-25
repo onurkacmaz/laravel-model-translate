@@ -53,7 +53,7 @@ class MongoDb implements DriverInterface
             return;
         }
 
-        $now = new UTCDateTime();
+        $now = new UTCDateTime;
         $documents = [];
 
         foreach ($locales as $locale) {
@@ -79,7 +79,7 @@ class MongoDb implements DriverInterface
             return false;
         }
 
-        $now = new UTCDateTime();
+        $now = new UTCDateTime;
 
         foreach ($values as $key => $value) {
             $this->collection()->updateOne(

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static LaravelModelTranslate setLocale(string|null $locale)
  * @method static LaravelModelTranslate setDriver(\Onurkacmaz\LaravelModelTranslate\Drivers\DriverInterface $driver)
  *
- * @see \Onurkacmaz\LaravelModelTranslate\LaravelModelTranslate
+ * @see LaravelModelTranslate
  */
 class LaravelModelTranslateFacade extends Facade
 {

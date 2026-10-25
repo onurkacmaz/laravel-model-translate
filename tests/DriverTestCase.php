@@ -27,8 +27,8 @@ abstract class DriverTestCase extends TestCase
     {
         $post = Post::create(['title' => 'Merhaba', 'content' => 'İçerik']);
 
-        $this->assertSame(['title' => 'Merhaba', 'content' => 'İçerik'], $this->sorted($post->getTranslations('en')));
-        $this->assertSame(['title' => 'Merhaba', 'content' => 'İçerik'], $this->sorted($post->getTranslations('de')));
+        $this->assertSame(['content' => 'İçerik', 'title' => 'Merhaba'], $this->sorted($post->getTranslations('en')));
+        $this->assertSame(['content' => 'İçerik', 'title' => 'Merhaba'], $this->sorted($post->getTranslations('de')));
         $this->assertSame([], $post->getTranslations('tr'));
     }
 

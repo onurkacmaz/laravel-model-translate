@@ -4,6 +4,7 @@ namespace Onurkacmaz\LaravelModelTranslate\Tests;
 
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Onurkacmaz\LaravelModelTranslate\Drivers\DriverInterface;
 use Onurkacmaz\LaravelModelTranslate\LaravelModelTranslateServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
@@ -47,6 +48,6 @@ abstract class TestCase extends Orchestra
     protected function useDriver(string $name): void
     {
         $this->app['config']->set('laravel-model-translate.driver', $name);
-        $this->app->forgetInstance(\Onurkacmaz\LaravelModelTranslate\Drivers\DriverInterface::class);
+        $this->app->forgetInstance(DriverInterface::class);
     }
 }

@@ -12,9 +12,7 @@ use Illuminate\Redis\Connections\Connection;
  */
 class Redis implements DriverInterface
 {
-    public function __construct(private RedisFactory $redis, private array $config = [])
-    {
-    }
+    public function __construct(private RedisFactory $redis, private array $config = []) {}
 
     public function get(Model $model, array $columns, string $locale): array
     {

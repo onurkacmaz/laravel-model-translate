@@ -1,5 +1,10 @@
-.github
-.idea
+/.idea
+/.vscode
+/vendor
+/coverage
+/build
 composer.lock
-vendor
 .phpunit.result.cache
+/.phpunit.cache
+.DS_Store
+dump.rdb

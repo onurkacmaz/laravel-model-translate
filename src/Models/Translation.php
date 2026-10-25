@@ -2,13 +2,19 @@
 
 namespace Onurkacmaz\LaravelModelTranslate\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $namespace
+ * @property string $foreign_id
+ * @property string $locale
+ * @property string $key
+ * @property string|null $value
+ */
 class Translation extends Model
 {
-    use HasFactory;
-
     protected $table = 'translations';
+
     protected $guarded = [];
 }

@@ -2,102 +2,118 @@
 
 namespace Onurkacmaz\LaravelModelTranslate\Drivers;
 
+use Illuminate\Database\Eloquent\Model;
+use MongoDB\BSON\UTCDateTime;
 use MongoDB\Client;
 use MongoDB\Collection;
+use RuntimeException;
 
-class MongoDb extends AbstractDriver
+/**
+ * Stores every translated column as a document of the form
+ * { namespace, foreign_id, locale, key, value, created_at, updated_at }.
+ */
+class MongoDb implements DriverInterface
 {
-    private \MongoDB\Database $mongoDb;
-    private Collection $collection;
+    private ?Collection $collection = null;
 
-    public function __construct()
+    public function __construct(private array $config = [])
     {
-        $client = new Client(config('laravel-model-translate.drivers.mongodb.dsn'));
-        $this->mongoDb = $client->selectDatabase(config('laravel-model-translate.drivers.mongodb.database'));
-        $this->collection = new Collection($client->getManager(), $this->mongoDb->getDatabaseName(), "translations");
+        if (! class_exists(Client::class)) {
+            throw new RuntimeException('The mongodb driver requires the "mongodb/mongodb" package. Run: composer require mongodb/mongodb');
+        }
     }
 
-    public function get(): object
+    public function get(Model $model, array $columns, string $locale): array
     {
-        $values = [];
+        if ($columns === []) {
+            return [];
+        }
 
-        $query = [
-            'namespace' => $this->getModel()::class,
-            'locale' => $this->getLocale(),
-            'foreignId' => $this->getModel()->getKey()
-        ];
+        $cursor = $this->collection()->find(
+            $this->filter($model) + ['locale' => $locale, 'key' => ['$in' => array_values($columns)]],
+            ['projection' => ['key' => 1, 'value' => 1], 'typeMap' => ['root' => 'array', 'document' => 'array', 'array' => 'array']],
+        );
 
-        foreach ($this->getColumns() as $column) {
-            $result = $this->collection->find($query);
-            if (count($result->toArray()) > 0) {
-                $values[] = (object)[
-                    "key" => $column,
-                    "value" => $result->current()['value']
+        $translations = [];
+
+        foreach ($cursor as $document) {
+            $translations[$document['key']] = $document['value'] ?? null;
+        }
+
+        return $translations;
+    }
+
+    public function create(Model $model, array $values, array $locales): void
+    {
+        if ($values === [] || $locales === []) {
+            return;
+        }
+
+        if ($this->collection()->countDocuments($this->filter($model) + ['locale' => ['$in' => array_values($locales)]], ['limit' => 1]) > 0) {
+            return;
+        }
+
+        $now = new UTCDateTime;
+        $documents = [];
+
+        foreach ($locales as $locale) {
+            foreach ($values as $key => $value) {
+                $documents[] = $this->filter($model) + [
+                    'locale' => $locale,
+                    'key' => $key,
+                    'value' => $value,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ];
             }
         }
 
-        if (count($values) <= 0) {
-            return (object)[];
-        }
-
-        return (object)$values;
+        $this->collection()->insertMany($documents);
     }
 
-    public function create(): void {
-        $locales = array_filter(config('laravel-model-translate.supported_locales'), fn($locale) => $locale !== $this->getLocale());
+    public function update(Model $model, array $values, string $locale): bool
+    {
+        $filter = $this->filter($model) + ['locale' => $locale];
 
-        $query = [
-            'namespace' => $this->getModel()::class,
-            'locale' => [
-                '$not' => [
-                    '$eq' => $this->getLocale()
-                ]
-            ],
-            'foreignId' => $this->getModel()->getKey()
-        ];
-
-        $translation = $this->collection->find($query);
-
-        if (count($translation->toArray()) <= 0) {
-            $data = [];
-            foreach ($this->getColumns() as $column) {
-                foreach ($locales as $locale) {
-                    $data[] = [
-                        'key' => $column,
-                        'value' => $this->getModel()->getAttribute($column),
-                        'namespace' => $this->getModel()::class,
-                        'locale' => $locale,
-                        'foreign_id' => $this->getModel()->getKey(),
-                        'created_at' => now(),
-                    ];
-                }
-            }
-
-            $this->collection->insertOne($data);
+        if ($this->collection()->countDocuments($filter, ['limit' => 1]) === 0) {
+            return false;
         }
+
+        $now = new UTCDateTime;
+
+        foreach ($values as $key => $value) {
+            $this->collection()->updateOne(
+                $filter + ['key' => $key],
+                [
+                    '$set' => ['value' => $value, 'updated_at' => $now],
+                    '$setOnInsert' => ['created_at' => $now],
+                ],
+                ['upsert' => true],
+            );
+        }
+
+        return true;
     }
 
-    public function update(): void {
-        $query = [
-            'namespace' => $this->getModel()::class,
-            'locale' => $this->getLocale(),
-            'foreignId' => $this->getModel()->getKey()
+    public function delete(Model $model, array $locales): void
+    {
+        $this->collection()->deleteMany($this->filter($model) + ['locale' => ['$in' => array_values($locales)]]);
+    }
+
+    protected function collection(): Collection
+    {
+        return $this->collection ??= (new Client($this->config['dsn'] ?? 'mongodb://localhost:27017'))
+            ->selectCollection($this->config['database'] ?? 'translations', $this->config['collection'] ?? 'translations');
+    }
+
+    /**
+     * @return array{namespace: string, foreign_id: string}
+     */
+    protected function filter(Model $model): array
+    {
+        return [
+            'namespace' => $model->getMorphClass(),
+            'foreign_id' => (string) $model->getKey(),
         ];
-
-        $translations = $this->collection->find($query);
-
-        if (count($translations->toArray()) > 0) {
-            foreach ($translations as $translation) {
-                if (in_array($translation["key"], $this->getColumns())) {
-                    $this->collection->updateOne($query, [
-                        'value' => $this->getModel()->getAttribute($translation["key"])
-                    ]);
-                }
-            }
-            $this->getModel()->setAttribute('isOriginal', false);
-        }else {
-            $this->getModel()->setAttribute('isOriginal', true);
-        }
     }
 }

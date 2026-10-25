@@ -214,7 +214,7 @@ it is not reachable. The MongoDB tests run when `mongodb/mongodb` is installed a
 
 ## Changelog
 
-Please see [CHANGELOG](CHANGELOG.md) for what has changed recently.
+Please see [CHANGELOG](CHANGELOG.md) for what has changed recently, and [UPGRADE](UPGRADE.md) when upgrading from 1.x.
 
 ## Contributing
 

@@ -19,8 +19,8 @@ Add a trait to a model, list the columns to translate, and the package takes car
 
 ## Requirements
 
-- PHP 8.1+
-- Laravel 10, 11, 12 or 13
+- PHP 8.2+
+- Laravel 12 or 13
 - For the `redis` driver: [phpredis](https://github.com/phpredis/phpredis) or [predis](https://github.com/predis/predis)
 - For the `mongodb` driver: the [`mongodb`](https://www.php.net/manual/en/mongodb.installation.php) extension and `mongodb/mongodb`
 

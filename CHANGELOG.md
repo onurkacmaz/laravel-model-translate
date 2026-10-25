@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Laravel 10, 11, 12 and 13 support; the Laravel components are now declared dependencies.
+- Laravel 12 and 13 support; the Laravel components are now declared dependencies. PHP 8.2 or newer is required.
 - `deleted` handling: a model's translations are removed when it is deleted (or force deleted when it uses soft deletes).
 - `saveTranslation()`, `getTranslations()` and `translateTo()` helpers on the `Translatable` trait.
 - `getTranslations()` and `delete()` on `LaravelModelTranslate`; `update()` accepts explicit values.
